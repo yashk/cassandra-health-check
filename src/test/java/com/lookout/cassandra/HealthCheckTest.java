@@ -55,6 +55,7 @@ public class HealthCheckTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testFUnresponsiveCoordinator() {
         sut.dropKeyspace();
         sut.createKeyspace(1);
@@ -62,7 +63,7 @@ public class HealthCheckTest {
         // suspend all the SharedPool threads, which are running cassandra
         for (Thread thread : Thread.getAllStackTraces().keySet()) {
             if (thread.getName().startsWith("SharedPool")) {
-                thread.suspend();
+                thread.suspend();	// unfortunately, deprecated, hence the suppressed warning above
             }
         }
         // this should time out and fail the health check with an ERROR
