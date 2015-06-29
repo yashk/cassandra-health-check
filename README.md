@@ -23,7 +23,8 @@ This project uses gradle for builds. to build it, just run:
 
 When it completes, you end up with a fat jar that has all the dependencies wrapped
 in it, located in
-in `build/libs/CassandraHealthCheck-all*.jar`
+
+  `build/libs/CassandraHealthCheck-all*.jar`
 
 ## Testing
 
