@@ -6,10 +6,10 @@ defaultTasks 'check', 'fatJar'
 
 task fatJar(type: Jar) {
     manifest {
-	attributes 'Implementation-Title': 'Cassandra Health Check',
-		'Implementation-Version': version,
-		'Main-Class': 'com.lookout.cassandra.CassandraHealthCheck'
-	}
+    attributes 'Implementation-Title': 'Cassandra Health Check',
+        'Implementation-Version': version,
+        'Main-Class': 'com.lookout.cassandra.CassandraHealthCheck'
+    }
     baseName = project.name + '-all'
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
