@@ -23,7 +23,7 @@ This project uses gradle for builds. to build it, just run:
 
 When it completes, you end up with a fat jar that has all the dependencies wrapped
 in it, located in
-in build/libs/com.lookout.*.CassandraHealthCheck-all*.jar
+in `build/libs/CassandraHealthCheck-all*.jar`
 
 ## Testing
 
@@ -35,7 +35,7 @@ To run the tests, just run:
 
 To execute it, you'll need to point it at an existing node in a cluster, like this:
 
-  `java -jar build/libs/*.CassandraHealthCheck-all*.jar -host HOSTNAME -port PORT -username USER -password PASSWORD`
+  `java -jar build/libs/CassandraHealthCheck-all*.jar -host HOSTNAME -port PORT -username USER -password PASSWORD`
 
 All the options are optional, the defaults can be seen by running with -help.
 There is no default username and password;

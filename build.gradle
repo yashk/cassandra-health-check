@@ -1,18 +1,18 @@
-apply plugin: 'java'
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '1.2.1'
+}
 
 version = '1.0.0-SNAPSHOT'
 group = 'com.lookout.cassandra'
-defaultTasks 'check', 'fatJar'
+defaultTasks 'check', 'shadowJar'
 
-task fatJar(type: Jar) {
+shadowJar {
     manifest {
-    attributes 'Implementation-Title': 'Cassandra Health Check',
-        'Implementation-Version': version,
-        'Main-Class': 'com.lookout.cassandra.CassandraHealthCheck'
+        attributes 'Implementation-Title': 'Cassandra Health Check',
+                   'Implementation-Version': project.version,
+                   'Main-Class': 'com.lookout.cassandra.CassandraHealthCheck'
     }
-    baseName = project.name + '-all'
-    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
-    with jar
 }
 
 repositories {
@@ -29,6 +29,7 @@ dependencies {
     }
     compile group: 'args4j', name: 'args4j', version: '2.32'
     compile group: 'com.google.guava', name: 'guava', version: '18.0'
+
     testCompile (group: 'org.cassandraunit', name: 'cassandra-unit', version: '2.1.3.1') {
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'
         exclude group: 'com.datastax.cassandra', module: 'cassandra-driver-core'
