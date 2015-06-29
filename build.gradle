@@ -1,9 +1,8 @@
 apply plugin: 'java'
-sourceCompatibility = 1.7
-targetCompatibility = 1.7
-version = '1.0.0-SNAPSHOT'
 
-defaultTasks 'fatJar'
+version = '1.0.0-SNAPSHOT'
+group = 'com.lookout.cassandra'
+defaultTasks 'check', 'fatJar'
 
 task fatJar(type: Jar) {
     manifest {
