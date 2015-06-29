@@ -7,7 +7,7 @@ This command-line tool is used to check for network partitions and other intra-c
 It works by making a connection to only one node, which will be the coordinator for the request.
 It then verifies that there is a namespace that has a replication factor equal to the number of
 nodes in the cluster, and adds a column family with a single row. It then selects that row using
-a consistency of CL_ALL, with a downgrade policy. When the row comes back, if it downgraded, you
+a consistency of `CL_ALL`, with a downgrade policy. When the row comes back, if it downgraded, you
 get an exit code of 1 (which consul considers a warning). If the coordinator can't read the data
 at all (which usually means the local node isn't working or you can't connect for some reason)
 then you get an exit code of 2.
@@ -19,7 +19,7 @@ the data is always on every node in the cluster (or should be).
 
 This project uses gradle for builds. to build it, just run:
 
-  `gradlew`
+  `./gradlew`
 
 When it completes, you end up with a fat jar that has all the dependencies wrapped
 in it, located in
@@ -29,7 +29,7 @@ in build/libs/com.lookout.*.CassandraHealthCheck-all*.jar
 
 To run the tests, just run:
 
-  `gradlew test`
+  `./gradlew test`
 
 ## Running it
 
