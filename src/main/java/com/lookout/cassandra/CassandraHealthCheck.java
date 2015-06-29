@@ -1,10 +1,22 @@
 package com.lookout.cassandra;
 
 import ch.qos.logback.classic.Level;
-import com.datastax.driver.core.*;
-import com.datastax.driver.core.exceptions.DriverException;
+import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.ConsistencyLevel;
+import com.datastax.driver.core.ExecutionInfo;
+import com.datastax.driver.core.Host;
+import com.datastax.driver.core.KeyspaceMetadata;
+import com.datastax.driver.core.Metadata;
+import com.datastax.driver.core.QueryTrace;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Session;
+import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
-import com.datastax.driver.core.policies.*;
+import com.datastax.driver.core.policies.DowngradingConsistencyRetryPolicy;
+import com.datastax.driver.core.policies.LoadBalancingPolicy;
+import com.datastax.driver.core.policies.LoggingRetryPolicy;
+import com.datastax.driver.core.policies.RoundRobinPolicy;
+import com.datastax.driver.core.policies.WhiteListPolicy;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
@@ -18,6 +30,8 @@ import java.net.InetSocketAddress;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -33,19 +47,19 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
  */
 public class CassandraHealthCheck {
     @Option(name="-host",usage="The cassandra host name for the coordinator")
-    public String host = "localhost";
+    public transient String host = "localhost";
 
     @Option(name="-port",usage="The port to connect to")
-    public Integer port = 9042;
+    public transient Integer port = 9042;
 
     @Option(name="-username",usage="Username")
-    private String username;
+    private transient String username;
 
     @Option(name="-password",usage="Password")
-    private String password;
+    private transient String password;
 
     @Option(name="-debug",usage="Enable debugging")
-    private boolean debug;
+    private transient boolean debugFlag;
 
     /**
      * The name of the healthcheck keyspace in cassandra. Note that this keyspace may be dropped
@@ -68,10 +82,21 @@ public class CassandraHealthCheck {
 
     private static final Logger LOG = LoggerFactory.getLogger(CassandraHealthCheck.class);
 
-    public static void main(String[] args) throws IOException {
+    private transient Cluster cluster;
+    private transient Session session;
+    private transient Set<Host> hosts;
+
+    private final SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss.SSSS", Locale.ENGLISH);
+
+    public CrossJVMLock getLock() {
+        return lock;
+    }
+
+    @SuppressWarnings("PMD.ConfusingTernary")
+    public static void main(final String[] args) throws IOException {
         final CassandraHealthCheck chc = new CassandraHealthCheck();
         final CmdLineParser parser = new CmdLineParser(chc);
-        if (chc.debug) {
+        if (chc.debugFlag) {
             ((ch.qos.logback.classic.Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)).setLevel(Level.DEBUG);
         }
         try {
@@ -95,10 +120,6 @@ public class CassandraHealthCheck {
 
     }
 
-    private Cluster cluster;
-    private Session session;
-    private Set<Host> hosts;
-
     /**
      * Connect to a cassandra cluster at a given host/port
      */
@@ -108,7 +129,10 @@ public class CassandraHealthCheck {
         } catch (IOException e) {
             throw new IllegalStateException("There appears to be another health check running", e);
         }
-        final LoadBalancingPolicy loadBalancingPolicy = new WhiteListPolicy(new RoundRobinPolicy(), new ArrayList<InetSocketAddress>() {{ add(new InetSocketAddress(host, port));}});
+        final List<InetSocketAddress> whiteList= new ArrayList<>();
+        whiteList.add(new InetSocketAddress(host, port));
+
+        final LoadBalancingPolicy loadBalancingPolicy = new WhiteListPolicy(new RoundRobinPolicy(), whiteList);
         final Cluster.Builder cb = Cluster.builder()
                 .addContactPoint(host)
                 .withPort(port)
@@ -123,13 +147,13 @@ public class CassandraHealthCheck {
     }
 
     public int healthCheck() {
-        Statement health = QueryBuilder.select().all().from(HEALTHCHECK_KEYSPACE_NAME, "healthcheck")
+        final Statement health = QueryBuilder.select().all().from(HEALTHCHECK_KEYSPACE_NAME, "healthcheck")
                 .where(eq("healthkey", "healthy"));
         health.setConsistencyLevel(ConsistencyLevel.ALL);
         health.enableTracing();
         QueryTrace queryTrace;
+        cluster.register(new LoggingLatencyTracker());
         try {
-            cluster.register(new LoggingLatencyTracker());
             final ResultSet results = session.execute(health);
             final ExecutionInfo executionInfo = results.getExecutionInfo();
             queryTrace = executionInfo.getQueryTrace();
@@ -161,7 +185,6 @@ public class CassandraHealthCheck {
         return 0;
     }
 
-    private final SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss.SSSS");
     private String millis2Date(long timestamp) {
         return format.format(timestamp);
     }
@@ -193,7 +216,7 @@ public class CassandraHealthCheck {
     public void createKeyspace(int rf) {
         session.execute("CREATE KEYSPACE " + HEALTHCHECK_KEYSPACE_NAME
             + " WITH REPLICATION = { 'class': 'SimpleStrategy', 'replication_factor': "
-            + String.valueOf(rf)
+            + rf
             + " }");
         session.execute("CREATE TABLE " + HEALTHCHECK_KEYSPACE_NAME + ".healthcheck ( healthkey varchar primary key )");
         session.execute("INSERT INTO " + HEALTHCHECK_KEYSPACE_NAME + ".healthcheck (healthkey) values ('healthy')");

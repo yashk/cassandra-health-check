@@ -12,7 +12,7 @@ import com.datastax.driver.core.policies.RetryPolicy;
 class RecollectingRetryPolicy implements RetryPolicy {
 
     private final RetryPolicy policy;
-    private RetryDecision decision = null;
+    private RetryDecision decision;
 
     public RetryDecision getLastDecision() {
         return decision;

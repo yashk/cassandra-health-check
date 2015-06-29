@@ -25,9 +25,8 @@ public class CrossJVMLockTest {
             sut.lock();
             Assert.fail("Expected exception");
         } catch (IOException e) {
-
+	    sut.unlock();
         }
-        sut.unlock();
     }
 
     @Test(expected = java.lang.IllegalStateException.class)
@@ -43,13 +42,13 @@ public class CrossJVMLockTest {
             second.lock();
             Assert.fail("Should have thrown exception");
         } catch (IOException e) {
-            // ignore
+            Assert.assertTrue(true);
         }
         try {
             second.unlock();
             Assert.fail("Should have thrown exception");
         } catch (IllegalStateException e) {
-            // ignore
+            Assert.assertTrue(true);
         }
         sut.unlock();
     }
