@@ -54,7 +54,7 @@ public class HealthCheckTest {
        Assert.assertEquals(1, sut.healthCheck());
     }
 
-    @Test
+   /* @Test
     @SuppressWarnings("deprecation")
     public void testFUnresponsiveCoordinator() {
         sut.dropKeyspace();
@@ -75,7 +75,7 @@ public class HealthCheckTest {
                 thread.resume();
             }
         }
-    }
+    }*/
 
     @Test
     public void testGDropKeyspace() throws Exception {

@@ -1,5 +1,6 @@
 package com.lookout.cassandra;
 
+import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.LatencyTracker;
 import com.datastax.driver.core.Statement;
@@ -21,5 +22,15 @@ class LoggingLatencyTracker implements LatencyTracker {
         } else {
             LOG.error("Host {} threw exception {}", host, exception);
         }
+    }
+
+    @Override
+    public void onRegister(Cluster cluster) {
+
+    }
+
+    @Override
+    public void onUnregister(Cluster cluster) {
+
     }
 }

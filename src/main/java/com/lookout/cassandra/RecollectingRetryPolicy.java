@@ -1,8 +1,10 @@
 package com.lookout.cassandra;
 
+import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.WriteType;
+import com.datastax.driver.core.exceptions.DriverException;
 import com.datastax.driver.core.policies.RetryPolicy;
 
 /**
@@ -13,6 +15,7 @@ class RecollectingRetryPolicy implements RetryPolicy {
 
     private final RetryPolicy policy;
     private RetryDecision decision;
+    private Cluster cluster;
 
     public RetryDecision getLastDecision() {
         return decision;
@@ -22,7 +25,7 @@ class RecollectingRetryPolicy implements RetryPolicy {
      * Creates a new {@code RetryPolicy} that remembers if {@code policy}.downgraded or not
      *
      * @param policy the policy to wrap. The policy created by this constructor
-     * will return the same decision than {@code policy} but will note the retry
+     *               will return the same decision than {@code policy} but will note the retry
      */
     public RecollectingRetryPolicy(RetryPolicy policy) {
         this.policy = policy;
@@ -49,4 +52,20 @@ class RecollectingRetryPolicy implements RetryPolicy {
         this.decision = decision;
         return decision;
     }
+
+    @Override
+    public RetryDecision onRequestError(Statement statement, ConsistencyLevel consistencyLevel, DriverException e, int i) {
+        return null;
+    }
+
+    @Override
+    public void init(Cluster cluster) {
+        this.cluster = cluster;
+    }
+
+    @Override
+    public void close() {
+
+    }
 }
+

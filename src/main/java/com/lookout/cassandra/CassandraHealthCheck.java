@@ -1,16 +1,7 @@
 package com.lookout.cassandra;
 
 import ch.qos.logback.classic.Level;
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.ConsistencyLevel;
-import com.datastax.driver.core.ExecutionInfo;
-import com.datastax.driver.core.Host;
-import com.datastax.driver.core.KeyspaceMetadata;
-import com.datastax.driver.core.Metadata;
-import com.datastax.driver.core.QueryTrace;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.Statement;
+import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.policies.DowngradingConsistencyRetryPolicy;
 import com.datastax.driver.core.policies.LoadBalancingPolicy;
@@ -24,16 +15,18 @@ import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.security.KeyStore;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 
@@ -57,6 +50,24 @@ public class CassandraHealthCheck {
 
     @Option(name="-password",usage="Password")
     private transient String password;
+
+    @Option(name="-ssl",usage="ssl")
+    private transient String ssl;
+
+    @Option(name="-trustStorePath",usage="trustStorePath")
+    private transient String trustStorePath;
+
+
+    @Option(name="-trustStorePassword",usage="trustStorePassword")
+    private transient String trustStorePassword;
+
+
+    @Option(name="-keyStorePath",usage="keyStorePath")
+    private transient String keyStorePath;
+
+
+    @Option(name="-keyStorePassword",usage="keyStorePassword")
+    private transient String keyStorePassword;
 
     @Option(name="-debug",usage="Enable debugging")
     private transient boolean debugFlag;
@@ -140,6 +151,20 @@ public class CassandraHealthCheck {
                 .withRetryPolicy(retryPolicy);
         if (username != null) {
             cb.withCredentials(username, password);
+        }
+
+        if(ssl !=null){
+            if(trustStorePath != null || keyStorePath!=null){
+                try {
+                    SSLOptions sslOptions = getSSLOptions(keyStorePath,keyStorePassword,trustStorePath,trustStorePassword);
+                    cb.withSSL(sslOptions);
+                } catch (Exception e) {
+                    throw new IllegalArgumentException(e);
+                }
+            }else{
+                cb.withSSL();
+            }
+
         }
         cluster = cb.build();
         session = cluster.connect();
@@ -238,4 +263,38 @@ public class CassandraHealthCheck {
      * Check to see if we're the only process like us running. This is done by creating a lock file
      * @return
      */
+
+
+    /**
+     * @param keyStorePath Path to keystore, if absent is not used.
+     * @param trustStorePath Path to truststore, if absent is not used.
+     * @return {@link com.datastax.driver.core.SSLOptions} with the given keystore and truststore path's for
+     * server certificate validation and client certificate authentication.
+     */
+    private static SSLOptions getSSLOptions( String keyStorePath, String keyStorePass,String trustStorePath ,String trustStorePass) throws Exception {
+
+        LOG.info("keyStorePath={} keyStorePass={} trustStorePath={} trustStorePass={}",keyStorePath,keyStorePass,trustStorePath,trustStorePass);
+
+
+        TrustManagerFactory tmf = null;
+        if(trustStorePath!=null && !trustStorePath.isEmpty()) {
+            KeyStore ks = KeyStore.getInstance("JKS");
+            ks.load(new FileInputStream(trustStorePath), trustStorePass.toCharArray());
+
+            tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            tmf.init(ks);
+        }
+
+        KeyManagerFactory kmf = null;
+        if(keyStorePath!=null && !keyStorePath.isEmpty()) {
+            KeyStore ks = KeyStore.getInstance("JKS");
+            ks.load(new FileInputStream(keyStorePath), keyStorePass.toCharArray());
+            kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            kmf.init(ks, keyStorePass.toCharArray());
+        }
+
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(kmf != null ? kmf.getKeyManagers() : null, tmf != null ? tmf.getTrustManagers() : null, new SecureRandom());
+        return JdkSSLOptions.builder().withSSLContext(sslContext).build();
+    }
 }
